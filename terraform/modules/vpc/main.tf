@@ -1,0 +1,100 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+locals {
+  common_tags = {
+    Environment = var.environment
+    Project     = var.project
+  }
+  nat_count = var.enable_ha_nat ? 3 : 1
+}
+
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+resource "aws_vpc" "this" {
+  cidr_block           = var.vpc_cidr
+  enable_dns_hostnames = true
+  enable_dns_support   = true
+  tags                 = merge(local.common_tags, { Name = "${var.project}-${var.environment}-vpc" })
+}
+
+resource "aws_internet_gateway" "this" {
+  vpc_id = aws_vpc.this.id
+  tags   = merge(local.common_tags, { Name = "${var.project}-${var.environment}-igw" })
+}
+
+resource "aws_subnet" "public" {
+  count                   = 3
+  vpc_id                  = aws_vpc.this.id
+  cidr_block              = cidrsubnet(var.vpc_cidr, 8, count.index)
+  availability_zone       = data.aws_availability_zones.available.names[count.index]
+  map_public_ip_on_launch = true
+  tags = merge(local.common_tags, {
+    Name                     = "${var.project}-${var.environment}-public-${count.index}"
+    "kubernetes.io/role/elb" = "1"
+  })
+}
+
+resource "aws_subnet" "private" {
+  count             = 3
+  vpc_id            = aws_vpc.this.id
+  cidr_block        = cidrsubnet(var.vpc_cidr, 8, count.index + 10)
+  availability_zone = data.aws_availability_zones.available.names[count.index]
+  tags = merge(local.common_tags, {
+    Name                              = "${var.project}-${var.environment}-private-${count.index}"
+    "kubernetes.io/role/internal-elb" = "1"
+  })
+}
+
+resource "aws_eip" "nat" {
+  count  = local.nat_count
+  domain = "vpc"
+  tags   = merge(local.common_tags, { Name = "${var.project}-${var.environment}-nat-eip-${count.index}" })
+}
+
+resource "aws_nat_gateway" "this" {
+  count         = local.nat_count
+  allocation_id = aws_eip.nat[count.index].id
+  subnet_id     = aws_subnet.public[count.index].id
+  tags          = merge(local.common_tags, { Name = "${var.project}-${var.environment}-nat-${count.index}" })
+  depends_on    = [aws_internet_gateway.this]
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.this.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.this.id
+  }
+  tags = merge(local.common_tags, { Name = "${var.project}-${var.environment}-public-rt" })
+}
+
+resource "aws_route_table_association" "public" {
+  count          = 3
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table" "private" {
+  count  = local.nat_count
+  vpc_id = aws_vpc.this.id
+  route {
+    cidr_block     = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.this[count.index].id
+  }
+  tags = merge(local.common_tags, { Name = "${var.project}-${var.environment}-private-rt-${count.index}" })
+}
+
+resource "aws_route_table_association" "private" {
+  count          = 3
+  subnet_id      = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private[count.index % local.nat_count].id
+}
