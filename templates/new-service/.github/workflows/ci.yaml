@@ -1,0 +1,15 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  ci:
+    uses: your-org/devops-platform/.github/workflows/ci.yaml@main
+    with:
+      service_name: "{{SERVICE_NAME}}"
+      dockerfile_path: ./Dockerfile
+    secrets: inherit
