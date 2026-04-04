@@ -1,3 +1,3 @@
 project     = "platform-core"
-environment = "prod"
+environment = "gamma"
 services    = ["api", "web", "worker"]

@@ -4,10 +4,10 @@ kind: Kustomization
 resources:
   - ../../base
 
-namePrefix: dev-
+namePrefix: gamma-
 
 commonLabels:
-  environment: dev
+  environment: gamma
 
 patches:
   - path: replica-patch.yaml
@@ -16,4 +16,4 @@ configMapGenerator:
   - name: SERVICE_NAME-config
     behavior: merge
     literals:
-      - LOG_LEVEL=debug
+      - LOG_LEVEL=info

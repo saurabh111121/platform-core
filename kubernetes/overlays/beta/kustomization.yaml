@@ -4,10 +4,10 @@ kind: Kustomization
 resources:
   - ../../base
 
-namePrefix: staging-
+namePrefix: beta-
 
 commonLabels:
-  environment: staging
+  environment: beta
 
 patches:
   - path: replica-patch.yaml
@@ -16,4 +16,4 @@ configMapGenerator:
   - name: SERVICE_NAME-config
     behavior: merge
     literals:
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug

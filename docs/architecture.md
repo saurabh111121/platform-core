@@ -2,12 +2,12 @@
 
 ## Overview
 
-This platform uses **Terraform** for infrastructure provisioning, **Kubernetes with Kustomize** for application deployment, and **GitHub Actions** for CI/CD automation. All three layers are version-controlled and designed for multi-environment support (dev, staging, prod).
+This platform uses **Terraform** for infrastructure provisioning, **Kubernetes with Kustomize** for application deployment, and **GitHub Actions** for CI/CD automation. All three layers are version-controlled and designed for multi-environment support (beta, gamma, prod).
 
 ## Directory Structure
 
 ```
-devops-platform/
+platform-core/
 ├── terraform/
 │   └── modules/
 │       ├── vpc/          # Network infrastructure
@@ -50,7 +50,7 @@ The `kubernetes/base/` directory contains shared manifests:
 - **Ingress** — nginx ingress controller, path-based routing
 - **ConfigMap** — LOG_LEVEL, PORT
 
-Environment overlays (`dev/`, `staging/`, `prod/`) patch replica counts, resource limits, and image tags using Kustomize.
+Environment overlays (`beta/`, `gamma/`, `prod/`) patch replica counts, resource limits, and image tags using Kustomize.
 
 ## CI/CD Layer (GitHub Actions)
 

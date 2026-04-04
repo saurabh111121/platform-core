@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-- Access to the GitHub org and the `devops-platform` repo
+- Access to the GitHub org and the `platform-core` repo
 - AWS CLI configured with appropriate credentials
 - `kubectl` and `kustomize` installed locally
 
@@ -11,7 +11,7 @@
 ### 1. Copy the service template
 
 ```bash
-cp -r devops-platform/templates/new-service/ ~/repos/my-service/
+cp -r platform-core/templates/new-service/ ~/repos/my-service/
 ```
 
 ### 2. Replace placeholders
@@ -28,7 +28,7 @@ Update the Kustomize overlay `namePrefix`, `commonLabels`, and image references 
 
 ### 3. Add service to Terraform
 
-In `devops-platform/terraform/terraform.tfvars`, add your service name to the services list:
+In `platform-core/terraform/terraform.tfvars`, add your service name to the services list:
 
 ```hcl
 service_names = [
@@ -61,7 +61,7 @@ git push origin main
 
 On push to `main`:
 1. **CI** runs automatically — tests, builds the Docker image, pushes to ECR
-2. **Deploy** — trigger manually via `workflow_dispatch`, selecting the target environment (dev → staging → prod)
+2. **Deploy** — trigger manually via `workflow_dispatch`, selecting the target environment (beta → gamma → prod)
 
 ### Verify
 
@@ -75,4 +75,4 @@ kubectl -n default get svc my-service
 
 ## Environment Promotion
 
-Deploy in order: **dev → staging → prod**. Each environment uses GitHub environment protection rules for approval gates on staging and prod.
+Deploy in order: **beta → gamma → prod**. Each environment uses GitHub environment protection rules for approval gates on gamma and prod.

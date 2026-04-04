@@ -8,7 +8,7 @@ on:
 
 jobs:
   ci:
-    uses: your-org/devops-platform/.github/workflows/ci.yaml@main
+    uses: your-org/platform-core/.github/workflows/ci.yaml@main
     with:
       service_name: "{{SERVICE_NAME}}"
       dockerfile_path: ./Dockerfile

@@ -7,7 +7,7 @@ on:
         description: Target environment
         required: true
         type: choice
-        options: [dev, staging, prod]
+        options: [beta, gamma, prod]
   push:
     branches: [main]
     paths: [terraform/**]
@@ -35,7 +35,7 @@ jobs:
         run: terraform init
         working-directory: ${{ env.TF_DIR }}
       - name: Terraform Plan
-        run: terraform plan -var="environment=${{ inputs.environment || 'dev' }}" -out=tfplan
+        run: terraform plan -var="environment=${{ inputs.environment || 'beta' }}" -out=tfplan
         working-directory: ${{ env.TF_DIR }}
       - name: Upload plan artifact
         uses: actions/upload-artifact@v4
@@ -47,7 +47,7 @@ jobs:
     needs: plan
     runs-on: ubuntu-latest
     # Manual approval enforced via environment protection rules
-    environment: ${{ inputs.environment || 'dev' }}
+    environment: ${{ inputs.environment || 'beta' }}
     steps:
       - uses: actions/checkout@v4
       - uses: hashicorp/setup-terraform@v3

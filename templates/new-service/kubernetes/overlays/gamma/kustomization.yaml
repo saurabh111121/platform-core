@@ -4,7 +4,7 @@ kind: Kustomization
 resources:
   - ../../base
 
-namePrefix: dev-
+namePrefix: gamma-
 
 patches:
   - target:
@@ -13,4 +13,4 @@ patches:
     patch: |
       - op: replace
         path: /spec/replicas
-        value: 1
+        value: 2

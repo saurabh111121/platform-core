@@ -5,7 +5,7 @@ variable "region" {
 
 variable "environment" {
   type    = string
-  default = "staging"
+  default = "beta"
 }
 
 variable "project" {

@@ -1,7 +1,7 @@
 terraform {
   backend "s3" {
     bucket = "PLACEHOLDER-terraform-state"
-    key    = "dev/terraform.tfstate"
+    key    = "beta/terraform.tfstate"
     region = "us-west-2"
   }
 
