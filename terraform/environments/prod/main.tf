@@ -54,3 +54,25 @@ module "ecr" {
   project       = var.project
   service_names = var.services
 }
+
+# --- Optional feature modules (opt-in via var.features) ---
+
+module "cloudwatch" {
+  count  = var.features.observability.cloudwatch ? 1 : 0
+  source = "../../modules/observability/cloudwatch"
+
+  project     = var.project
+  environment = var.environment
+}
+
+module "prometheus" {
+  count  = var.features.observability.prometheus ? 1 : 0
+  source = "../../modules/observability/prometheus"
+}
+
+module "argocd" {
+  count  = var.features.gitops.argocd ? 1 : 0
+  source = "../../modules/gitops/argocd"
+
+  environment = var.environment
+}

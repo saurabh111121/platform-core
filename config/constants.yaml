@@ -92,6 +92,22 @@ jenkins:
   version: "2.452.3"
   # URL is output after terraform apply — update JENKINS_URL GitHub secret
   url: ""  # e.g. http://platform-core-jenkins-alb-xxxx.us-west-2.elb.amazonaws.com
+# --- Features (opt-in, all off by default) ---
+# Set to true to enable the corresponding module/tooling
+features:
+  devsecops:
+    trivy: false          # Container image scanning
+    checkov: false        # Terraform IaC scanning
+    semgrep: false        # Static code analysis (SAST)
+    gitleaks: false       # Secrets scanning
+
+  observability:
+    cloudwatch: false     # CloudWatch log groups + Container Insights
+    prometheus: false     # Prometheus + Grafana on EKS
+
+  gitops:
+    argocd: false         # ArgoCD for pull-based GitOps
+
 # --- GitHub Actions ---
   default_branch: main
   runner: ubuntu-latest
