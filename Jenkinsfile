@@ -56,8 +56,44 @@ pipeline {
             }
         }
 
-        // ── 2. Build ───────────────────────────────────────────────
-        stage('Build') {
+        // ── 1.5 DevSecOps Scanning ────────────────────────────────
+        // Runs only when the respective feature flag env var is set.
+        // Set ENABLE_TRIVY=true, ENABLE_CHECKOV=true, etc. in Jenkins
+        // job configuration or pipeline parameters to activate.
+        stage('Secrets Scan (GitLeaks)') {
+            when { environment name: 'ENABLE_GITLEAKS', value: 'true' }
+            steps {
+                sh '''
+                    docker run --rm -v $(pwd):/repo \
+                        zricethezav/gitleaks:latest detect \
+                        --source /repo --exit-code 1
+                '''
+            }
+        }
+
+        stage('SAST (Semgrep)') {
+            when { environment name: 'ENABLE_SEMGREP', value: 'true' }
+            steps {
+                sh '''
+                    docker run --rm -v $(pwd):/src \
+                        returntocorp/semgrep semgrep \
+                        --config=auto /src --error
+                '''
+            }
+        }
+
+        stage('IaC Scan (Checkov)') {
+            when { environment name: 'ENABLE_CHECKOV', value: 'true' }
+            steps {
+                sh '''
+                    docker run --rm -v $(pwd):/tf \
+                        bridgecrew/checkov -d /tf/terraform \
+                        --quiet --compact
+                '''
+            }
+        }
+
+        // ── 2. Build ───────────────────────────────────────────────        stage('Build') {
             steps {
                 echo "Building Docker image: ${env.IMAGE}"
                 sh """
@@ -70,7 +106,20 @@ pipeline {
             }
         }
 
-        // ── 3. Push to ECR ─────────────────────────────────────────
+        // ── 3. Image Scan (Trivy) ──────────────────────────────────
+        stage('Image Scan (Trivy)') {
+            when { environment name: 'ENABLE_TRIVY', value: 'true' }
+            steps {
+                sh """
+                    docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+                        aquasec/trivy:latest image \
+                        --exit-code 1 --severity HIGH,CRITICAL \
+                        ${params.SERVICE_NAME}:${env.IMAGE_TAG}
+                """
+            }
+        }
+
+        // ── 4. Push to ECR ─────────────────────────────────────────
         // Only runs on the main branch.
         // Requires Jenkins credential 'aws-credentials' of type
         // "AWS Credentials" (access key + secret key).
@@ -94,7 +143,7 @@ pipeline {
             }
         }
 
-        // ── 4. Terraform Plan ──────────────────────────────────────
+        // ── 5. Terraform Plan ──────────────────────────────────────
         stage('Terraform Plan') {
             steps {
                 withCredentials([[
@@ -116,7 +165,7 @@ pipeline {
             }
         }
 
-        // ── 5. Terraform Apply ─────────────────────────────────────
+        // ── 6. Terraform Apply ─────────────────────────────────────
         // Gated by INFRA_APPLY param + manual input approval for
         // gamma and prod.
         stage('Terraform Apply') {
@@ -142,7 +191,7 @@ pipeline {
             }
         }
 
-        // ── 6. Deploy ──────────────────────────────────────────────
+        // ── 7. Deploy ──────────────────────────────────────────────
         // Gated by DEPLOY param + manual input approval for
         // gamma and prod.
         stage('Deploy') {
