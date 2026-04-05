@@ -80,3 +80,52 @@ resource "aws_iam_role" "deployer" {
     }]
   })
 }
+
+data "aws_caller_identity" "current" {}
+
+resource "aws_iam_role_policy" "deployer" {
+  name = "${local.cluster_name}-deployer-policy"
+  role = aws_iam_role.deployer.id
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ECRPush"
+        Effect = "Allow"
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:PutImage",
+          "ecr:InitiateLayerUpload",
+          "ecr:UploadLayerPart",
+          "ecr:CompleteLayerUpload",
+          "ecr:BatchGetImage",
+          "ecr:GetDownloadUrlForLayer",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "EKSAccess"
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+        ]
+        Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/${local.cluster_name}"
+      },
+      {
+        Sid    = "TerraformState"
+        Effect = "Allow"
+        Action = [
+          "s3:GetObject",
+          "s3:PutObject",
+          "s3:ListBucket",
+        ]
+        Resource = [
+          "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket}",
+          "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket}/*",
+        ]
+      },
+    ]
+  })
+}

@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket = "PLACEHOLDER-terraform-state"
+    bucket = "platform-core-tfstate-230296653961"
     key    = "prod/terraform.tfstate"
     region = "us-west-2"
   }
@@ -28,8 +28,9 @@ module "vpc" {
 module "iam" {
   source = "../../modules/iam"
 
-  environment = var.environment
-  project     = var.project
+  environment  = var.environment
+  project      = var.project
+  state_bucket = "platform-core-tfstate-230296653961"
 }
 
 module "eks" {

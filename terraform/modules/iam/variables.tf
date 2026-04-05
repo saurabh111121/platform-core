@@ -8,10 +8,15 @@ variable "project" {
 
 variable "github_org" {
   type    = string
-  default = "PLACEHOLDER-org"
+  default = "saurabh111121"
 }
 
 variable "github_repo" {
   type    = string
-  default = "PLACEHOLDER-repo"
+  default = "platform-core"
+}
+
+variable "state_bucket" {
+  type    = string
+  default = "platform-core-tfstate-230296653961"
 }

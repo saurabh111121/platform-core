@@ -22,7 +22,7 @@ permissions:
   contents: read
 
 env:
-  AWS_REGION: us-east-1
+  AWS_REGION: us-west-2
 
 jobs:
   deploy:
@@ -40,6 +40,6 @@ jobs:
         run: aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
       - name: Deploy with Kustomize
         run: |
-          cd k8s/overlays/${{ inputs.environment }}
+          cd kubernetes/overlays/${{ inputs.environment }}
           kustomize edit set image ${{ inputs.service_name }}=${{ vars.ECR_REGISTRY }}/${{ inputs.service_name }}:${{ inputs.image_tag }}
           kubectl apply -k .

@@ -21,7 +21,7 @@ In your copied files, replace all `{{SERVICE_NAME}}` and `{{IMAGE}}` placeholder
 ```bash
 # From your service repo root
 find . -type f -name '*.yaml' -o -name '*.yml' | xargs sed -i 's/{{SERVICE_NAME}}/my-service/g'
-find . -type f -name '*.yaml' -o -name '*.yml' | xargs sed -i 's|{{IMAGE}}|123456789012.dkr.ecr.us-east-1.amazonaws.com/my-service:latest|g'
+find . -type f -name '*.yaml' -o -name '*.yml' | xargs sed -i 's|{{IMAGE}}|123456789012.dkr.ecr.us-west-2.amazonaws.com/my-service:latest|g'
 ```
 
 Update the Kustomize overlay `namePrefix`, `commonLabels`, and image references to match your service.
@@ -45,7 +45,7 @@ In your service repo's GitHub settings (**Settings → Secrets and variables →
 
 | Secret | Value |
 |--------|-------|
-| `AWS_REGION` | e.g. `us-east-1` |
+| `AWS_REGION` | e.g. `us-west-2` |
 | `AWS_ACCOUNT_ID` | Your AWS account ID |
 | `AWS_ROLE_ARN` | The `deployer_role_arn` output from the IAM module |
 
