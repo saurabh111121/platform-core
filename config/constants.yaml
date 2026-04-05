@@ -1,0 +1,99 @@
+# ============================================================
+# Platform Core - Central Configuration Constants
+# ============================================================
+# Update these values to match your environment.
+# This file is the single source of truth for configurable
+# values referenced across workflows, Kubernetes manifests,
+# and Terraform configs.
+# ============================================================
+
+# --- Project ---
+project_name: platform-core
+
+# --- AWS ---
+aws_region: us-east-1
+aws_account_id: "000000000000"          # TODO: replace with real account ID
+ecr_registry: "000000000000.dkr.ecr.us-east-1.amazonaws.com"  # TODO: update
+
+# --- IAM / OIDC ---
+deployer_role_arn: "arn:aws:iam::000000000000:role/github-actions-deployer"  # TODO: update
+
+# --- EKS Cluster Names ---
+eks_clusters:
+  beta: platform-core-beta
+  gamma: platform-core-gamma
+  prod: platform-core-prod
+
+# --- Services ---
+# List of services deployed on the platform.
+# Add new services here and in terraform.tfvars per environment.
+services:
+  - api
+  - web
+  - worker
+
+# --- Terraform State ---
+terraform_state_bucket: "PLACEHOLDER-terraform-state"  # TODO: update
+terraform_state_region: us-west-2
+
+# --- Container Defaults ---
+container:
+  port: 8080
+  health_path: /health
+  dockerfile: Dockerfile
+
+# --- Kubernetes Defaults ---
+kubernetes:
+  ingress_class: nginx
+  service_port: 80
+  hpa_cpu_target: 70
+
+# --- Environment Sizing ---
+environments:
+  beta:
+    instance_types: ["t3.medium"]
+    node_min: 1
+    node_max: 3
+    replicas: 1
+    hpa_min: 1
+    hpa_max: 3
+    cpu_limit: 500m
+    memory_limit: 512Mi
+    log_level: debug
+    ha_nat: false
+
+  gamma:
+    instance_types: ["t3.large"]
+    node_min: 2
+    node_max: 5
+    replicas: 2
+    hpa_min: 2
+    hpa_max: 5
+    cpu_limit: 500m
+    memory_limit: 512Mi
+    log_level: info
+    ha_nat: false
+
+  prod:
+    instance_types: ["t3.xlarge"]
+    node_min: 3
+    node_max: 10
+    replicas: 3
+    hpa_min: 3
+    hpa_max: 20
+    cpu_limit: 1000m
+    memory_limit: 1Gi
+    log_level: warn
+    ha_nat: true
+
+# --- GitHub Actions ---
+github:
+  default_branch: main
+  runner: ubuntu-latest
+  actions_versions:
+    checkout: v4
+    configure_aws_credentials: v4
+    ecr_login: v2
+    setup_terraform: v3
+    upload_artifact: v4
+    download_artifact: v4

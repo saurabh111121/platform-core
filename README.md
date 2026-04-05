@@ -7,14 +7,14 @@ An infrastructure-as-code platform for deploying containerized services on AWS E
 ```
                   ┌──────────────────────────────────────────────────┐
                   │                  GitHub Actions                  │
-                  │  ci.yaml (reusable) → deploy.yaml → infra.yaml  │
-                  └──────┬──────────────────┬──────────────┬────────┘
+                  │  ci.yaml (reusable) → deploy.yaml → infra.yaml   │
+                  └──────┬──────────────────┬──────────────┬─────────┘
                          │                  │              │
                     Build & Push      kubectl apply   terraform apply
                          │                  │              │
-                  ┌──────▼──────┐   ┌───────▼──────┐  ┌───▼──────────────┐
-                  │     ECR     │   │   EKS Cluster │  │  AWS Resources   │
-                  │  (per-svc)  │──▶│  (Kustomize)  │  │  VPC/IAM/EKS/ECR │
+                  ┌──────▼──────┐   ┌───────▼──────┐  ┌────▼─────────────┐
+                  │     ECR     │   │  EKS Cluster │  │  AWS Resources   │
+                  │  (per-svc)  │──▶│  (Kustomize) │  │  VPC/IAM/EKS/ECR │
                   └─────────────┘   └──────────────┘  └──────────────────┘
 ```
 
@@ -28,6 +28,13 @@ Three layers work together:
 
 ```
 platform-core/
+├── .github/
+│   └── workflows/
+│       ├── ci.yaml         # Reusable: test → build → push to ECR (OIDC)
+│       ├── deploy.yaml     # Manual dispatch: kustomize → kubectl apply
+│       └── infra.yaml      # Terraform plan → apply with env protection
+├── config/
+│   └── constants.yaml      # Central configuration — all tuneable values in one place
 ├── terraform/
 │   ├── modules/
 │   │   ├── vpc/            # VPC, subnets, NAT gateways, route tables
@@ -45,10 +52,7 @@ platform-core/
 │       ├── gamma/          # 2 replicas, info logging
 │       └── prod/           # 3 replicas, warn logging, 1 CPU / 1Gi limits
 ├── ci-cd/
-│   └── .github/workflows/
-│       ├── ci.yaml         # Reusable: test → build → push to ECR (OIDC)
-│       ├── deploy.yaml     # Manual dispatch: kustomize → kubectl apply
-│       └── infra.yaml      # Terraform plan → apply with env protection
+│   └── .github/workflows/  # Reference copies of workflow sources
 ├── templates/
 │   └── new-service/        # Starter template for onboarding new services
 └── docs/
@@ -193,6 +197,10 @@ Terraform state is stored in S3 with per-environment keys:
 | beta | `beta/terraform.tfstate` |
 | gamma | `gamma/terraform.tfstate` |
 | prod | `prod/terraform.tfstate` |
+
+## Configuration
+
+All tuneable values (AWS account ID, ECR registry, EKS cluster names, services list, environment sizing, container defaults, etc.) are centralized in [`config/constants.yaml`](config/constants.yaml). Update the `TODO` placeholders before deploying.
 
 ## Documentation
 
