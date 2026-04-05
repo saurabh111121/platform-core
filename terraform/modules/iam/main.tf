@@ -58,7 +58,7 @@ resource "aws_iam_role_policy_attachment" "node" {
 resource "aws_iam_openid_connect_provider" "github" {
   url             = "https://token.actions.githubusercontent.com"
   client_id_list  = ["sts.amazonaws.com"]
-  thumbprint_list = ["ffffffffffffffffffffffffffffffffffffffff"]
+  thumbprint_list = ["1c58a3a8518e8759bf075b76b750d4f2df264fcd"]
 }
 
 resource "aws_iam_role" "deployer" {
@@ -90,7 +90,7 @@ resource "aws_iam_role_policy" "deployer" {
     Version = "2012-10-17"
     Statement = [
       {
-        Sid    = "ECRPush"
+        Sid    = "ECRAccess"
         Effect = "Allow"
         Action = [
           "ecr:GetAuthorizationToken",
@@ -101,6 +101,18 @@ resource "aws_iam_role_policy" "deployer" {
           "ecr:CompleteLayerUpload",
           "ecr:BatchGetImage",
           "ecr:GetDownloadUrlForLayer",
+          "ecr:DescribeRepositories",
+          "ecr:DeleteRepository",
+          "ecr:CreateRepository",
+          "ecr:PutLifecyclePolicy",
+          "ecr:DeleteLifecyclePolicy",
+          "ecr:GetLifecyclePolicy",
+          "ecr:ListTagsForResource",
+          "ecr:TagResource",
+          "ecr:UntagResource",
+          "ecr:SetRepositoryPolicy",
+          "ecr:GetRepositoryPolicy",
+          "ecr:DeleteRepositoryPolicy",
         ]
         Resource = "*"
       },
@@ -108,10 +120,9 @@ resource "aws_iam_role_policy" "deployer" {
         Sid    = "EKSAccess"
         Effect = "Allow"
         Action = [
-          "eks:DescribeCluster",
-          "eks:ListClusters",
+          "eks:*",
         ]
-        Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:cluster/${local.cluster_name}"
+        Resource = "arn:${data.aws_partition.current.partition}:eks:*:${data.aws_caller_identity.current.account_id}:*"
       },
       {
         Sid    = "TerraformState"
@@ -120,11 +131,55 @@ resource "aws_iam_role_policy" "deployer" {
           "s3:GetObject",
           "s3:PutObject",
           "s3:ListBucket",
+          "s3:DeleteObject",
         ]
         Resource = [
           "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket}",
           "arn:${data.aws_partition.current.partition}:s3:::${var.state_bucket}/*",
         ]
+      },
+      {
+        Sid    = "VPCAndNetworking"
+        Effect = "Allow"
+        Action = [
+          "ec2:*Vpc*",
+          "ec2:*Subnet*",
+          "ec2:*RouteTable*",
+          "ec2:*InternetGateway*",
+          "ec2:*NatGateway*",
+          "ec2:*Address*",
+          "ec2:*SecurityGroup*",
+          "ec2:*NetworkInterface*",
+          "ec2:*Tags*",
+          "ec2:DescribeAvailabilityZones",
+          "ec2:DescribeAccountAttributes",
+        ]
+        Resource = "*"
+      },
+      {
+        Sid    = "IAMAccess"
+        Effect = "Allow"
+        Action = [
+          "iam:GetRole",
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:PassRole",
+          "iam:GetRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:ListInstanceProfilesForRole",
+          "iam:GetOpenIDConnectProvider",
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:TagRole",
+          "iam:UntagRole",
+        ]
+        Resource = "*"
       },
     ]
   })

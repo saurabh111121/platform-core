@@ -1,0 +1,20 @@
+# Local development only.
+# For production, Jenkins is deployed on EC2 via terraform/modules/jenkins.
+# Run: docker compose up -d
+# Access: http://localhost:8080
+  jenkins:
+    build: .
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      # Mount host Docker socket so Jenkins can run docker builds
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+    restart: unless-stopped
+
+volumes:
+  jenkins_home:

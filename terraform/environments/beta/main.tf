@@ -54,3 +54,14 @@ module "ecr" {
   project       = var.project
   service_names = var.services
 }
+
+module "jenkins" {
+  source = "../../modules/jenkins"
+
+  project           = var.project
+  region            = var.region
+  vpc_id            = module.vpc.vpc_id
+  public_subnet_id  = module.vpc.public_subnet_ids[0]
+  public_subnet_ids = module.vpc.public_subnet_ids
+  state_bucket      = "platform-core-tfstate-230296653961"
+}

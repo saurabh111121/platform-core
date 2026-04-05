@@ -1,4 +1,4 @@
-name: Deploy
+name: Deploy — Trigger Jenkins
 
 on:
   workflow_dispatch:
@@ -18,28 +18,27 @@ on:
         type: string
 
 permissions:
-  id-token: write
   contents: read
 
-env:
-  AWS_REGION: us-west-2
-
 jobs:
-  deploy:
+  trigger-jenkins:
     runs-on: ubuntu-latest
-    # Environment protection rules (approvals, wait timers) configured in repo settings
-    environment: ${{ inputs.environment }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Update kubeconfig
-        run: aws eks update-kubeconfig --name ${{ vars.EKS_CLUSTER_NAME }} --region ${{ env.AWS_REGION }}
-      - name: Deploy with Kustomize
+      - name: Trigger Jenkins Deploy pipeline
         run: |
-          cd kubernetes/overlays/${{ inputs.environment }}
-          kustomize edit set image ${{ inputs.service_name }}=${{ vars.ECR_REGISTRY }}/${{ inputs.service_name }}:${{ inputs.image_tag }}
-          kubectl apply -k .
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.JENKINS_URL }}/job/platform-core-ci/buildWithParameters" \
+            --user "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+            --data-urlencode "SERVICE_NAME=${{ inputs.service_name }}" \
+            --data-urlencode "ENVIRONMENT=${{ inputs.environment }}" \
+            --data-urlencode "IMAGE_TAG=${{ inputs.image_tag }}" \
+            --data-urlencode "GIT_BRANCH=main" \
+            --data-urlencode "DEPLOY=true" \
+            --data-urlencode "INFRA_APPLY=false")
+
+          echo "Jenkins response: $RESPONSE"
+          if [ "$RESPONSE" != "201" ] && [ "$RESPONSE" != "200" ]; then
+            echo "Failed to trigger Jenkins deploy job (HTTP $RESPONSE)"
+            exit 1
+          fi
+          echo "Jenkins Deploy job triggered for ${{ inputs.environment }}"

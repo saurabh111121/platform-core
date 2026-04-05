@@ -1,6 +1,9 @@
-name: CI Pipeline
+name: CI — Trigger Jenkins
 
 on:
+  push:
+    branches: [main]
+  pull_request:
   workflow_call:
     inputs:
       service_name:
@@ -12,55 +15,27 @@ on:
         default: Dockerfile
 
 permissions:
-  id-token: write
   contents: read
 
-env:
-  AWS_REGION: us-west-2
-  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
-
 jobs:
-  test:
+  trigger-jenkins:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Setup language
-        run: echo "Setup language runtime"
-      - name: Run tests
-        run: echo "Run test suite"
-
-  build:
-    needs: test
-    runs-on: ubuntu-latest
-    outputs:
-      image_tag: ${{ steps.meta.outputs.tag }}
-    steps:
-      - uses: actions/checkout@v4
-      - name: Set image tag
-        id: meta
-        run: echo "tag=${{ github.sha }}" >> "$GITHUB_OUTPUT"
-      - name: Build Docker image
+      - name: Trigger Jenkins CI pipeline
         run: |
-          docker build \
-            -f ${{ inputs.dockerfile_path || 'Dockerfile' }} \
-            -t ${{ inputs.service_name || 'app' }}:${{ steps.meta.outputs.tag }} .
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.JENKINS_URL }}/job/platform-core-ci/buildWithParameters" \
+            --user "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+            --data-urlencode "SERVICE_NAME=${{ inputs.service_name || 'app' }}" \
+            --data-urlencode "DOCKERFILE_PATH=${{ inputs.dockerfile_path || 'Dockerfile' }}" \
+            --data-urlencode "GIT_COMMIT=${{ github.sha }}" \
+            --data-urlencode "GIT_BRANCH=${{ github.ref_name }}" \
+            --data-urlencode "DEPLOY=false" \
+            --data-urlencode "INFRA_APPLY=false")
 
-  push:
-    needs: build
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Login to ECR
-        id: ecr
-        uses: aws-actions/amazon-ecr-login@v2
-      - name: Build and push image
-        run: |
-          IMAGE=${{ steps.ecr.outputs.registry }}/${{ inputs.service_name || 'app' }}:${{ github.sha }}
-          docker build -f ${{ inputs.dockerfile_path || 'Dockerfile' }} -t $IMAGE .
-          docker push $IMAGE
+          echo "Jenkins response: $RESPONSE"
+          if [ "$RESPONSE" != "201" ] && [ "$RESPONSE" != "200" ]; then
+            echo "Failed to trigger Jenkins job (HTTP $RESPONSE)"
+            exit 1
+          fi
+          echo "Jenkins CI job triggered successfully"

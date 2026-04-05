@@ -1,4 +1,4 @@
-name: Infrastructure
+name: Infrastructure — Trigger Jenkins
 
 on:
   workflow_dispatch:
@@ -13,57 +13,25 @@ on:
     paths: [terraform/**]
 
 permissions:
-  id-token: write
   contents: read
 
-env:
-  AWS_REGION: us-west-2
-  TF_DIR: terraform
-
 jobs:
-  plan:
+  trigger-jenkins:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Terraform Init
-        run: terraform init
-        working-directory: ${{ env.TF_DIR }}
-      - name: Terraform Plan
-        run: terraform plan -var="environment=${{ inputs.environment || 'beta' }}" -out=tfplan
-        working-directory: ${{ env.TF_DIR }}
-      - name: Upload plan artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: tfplan
-          path: ${{ env.TF_DIR }}/tfplan
+      - name: Trigger Jenkins Infra pipeline
+        run: |
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X POST "${{ secrets.JENKINS_URL }}/job/platform-core-ci/buildWithParameters" \
+            --user "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_API_TOKEN }}" \
+            --data-urlencode "ENVIRONMENT=${{ inputs.environment || 'beta' }}" \
+            --data-urlencode "GIT_BRANCH=main" \
+            --data-urlencode "DEPLOY=false" \
+            --data-urlencode "INFRA_APPLY=true")
 
-  apply:
-    needs: plan
-    runs-on: ubuntu-latest
-    # Manual approval enforced via environment protection rules
-    environment: ${{ inputs.environment || 'beta' }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: hashicorp/setup-terraform@v3
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
-          aws-region: ${{ env.AWS_REGION }}
-      - name: Download plan artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: tfplan
-          path: ${{ env.TF_DIR }}
-      - name: Terraform Init
-        run: terraform init
-        working-directory: ${{ env.TF_DIR }}
-      - name: Terraform Apply
-        run: terraform apply tfplan
-        working-directory: ${{ env.TF_DIR }}
+          echo "Jenkins response: $RESPONSE"
+          if [ "$RESPONSE" != "201" ] && [ "$RESPONSE" != "200" ]; then
+            echo "Failed to trigger Jenkins infra job (HTTP $RESPONSE)"
+            exit 1
+          fi
+          echo "Jenkins Infra job triggered for ${{ inputs.environment || 'beta' }}"

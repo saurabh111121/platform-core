@@ -1,28 +1,40 @@
 # Platform Core
 
-An infrastructure-as-code platform for deploying containerized services on AWS EKS. It provides reusable Terraform modules, Kustomize-based Kubernetes manifests, and GitHub Actions CI/CD workflows across three environments (beta, gamma, prod).
+An infrastructure-as-code platform for deploying containerized services on AWS EKS. It provides reusable Terraform modules, Kustomize-based Kubernetes manifests, GitHub Actions triggers, and a Jenkins CI/CD pipeline across three environments (beta, gamma, prod).
 
 ## Architecture
 
 ```
-                  ┌──────────────────────────────────────────────────┐
-                  │                  GitHub Actions                  │
-                  │  ci.yaml (reusable) → deploy.yaml → infra.yaml   │
-                  └──────┬──────────────────┬──────────────┬─────────┘
-                         │                  │              │
-                    Build & Push      kubectl apply   terraform apply
-                         │                  │              │
-                  ┌──────▼──────┐   ┌───────▼──────┐  ┌────▼─────────────┐
-                  │     ECR     │   │  EKS Cluster │  │  AWS Resources   │
-                  │  (per-svc)  │──▶│  (Kustomize) │  │  VPC/IAM/EKS/ECR │
-                  └─────────────┘   └──────────────┘  └──────────────────┘
+  ┌─────────────────────────────────────────────────────────────────┐
+  │                        GitHub (SCM)                             │
+  │              Push / PR → branch protection rules                │
+  └──────────────────────────┬──────────────────────────────────────┘
+                             │ webhook / API trigger
+  ┌──────────────────────────▼──────────────────────────────────────┐
+  │                    GitHub Actions (trigger layer)               │
+  │         ci.yaml · deploy.yaml · infra.yaml · auto-destroy.yaml  │
+  └──────────────────────────┬──────────────────────────────────────┘
+                             │ Jenkins API call
+  ┌──────────────────────────▼──────────────────────────────────────┐
+  │              Jenkins on EC2 (CI/CD orchestrator)                │
+  │   Test → Build → Push to ECR → Terraform Apply → K8s Deploy     │
+  └────────┬──────────────────┬──────────────────────┬──────────────┘
+           │                  │                      │
+    docker push          terraform apply        kubectl apply
+           │                  │                      │
+  ┌────────▼──────┐  ┌────────▼──────────┐  ┌────────▼──────────────┐
+  │     ECR       │  │   AWS Resources   │  │    EKS Cluster        │
+  │  (per-svc)    │  │  VPC/IAM/EKS/ECR  │  │  beta·gamma·prod      │
+  └───────────────┘  └───────────────────┘  │  (Kustomize overlays) │
+                                            └───────────────────────┘
 ```
 
-Three layers work together:
+Four layers work together:
 
-1. **Terraform** provisions all AWS infrastructure (VPC, EKS, ECR, IAM)
-2. **Kubernetes + Kustomize** defines application deployments with per-environment overlays
-3. **GitHub Actions** automates building, pushing, deploying, and infrastructure changes
+1. GitHub Actions — lightweight trigger layer, fires on push/PR and calls Jenkins via API
+2. Jenkins (EC2) — full CI/CD orchestrator: test, build, push to ECR, terraform apply, kubectl deploy
+3. Terraform — provisions all AWS infrastructure (VPC, EKS, ECR, IAM, Jenkins EC2)
+4. Kubernetes + Kustomize — defines app deployments with per-environment overlays (beta/gamma/prod)
 
 ## Directory Structure
 
@@ -30,32 +42,44 @@ Three layers work together:
 platform-core/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yaml         # Reusable: test → build → push to ECR (OIDC)
-│       ├── deploy.yaml     # Manual dispatch: kustomize → kubectl apply
-│       └── infra.yaml      # Terraform plan → apply with env protection
+│       ├── ci.yaml             # Trigger: calls Jenkins CI job on push/PR
+│       ├── deploy.yaml         # Trigger: calls Jenkins deploy job
+│       ├── infra.yaml          # Trigger: calls Jenkins infra job on terraform/** changes
+│       └── auto-destroy.yaml   # Scheduled: destroys beta every 40 minutes
+├── github-actions-standalone/  # Standalone GitHub Actions (no Jenkins) — use as alternative
+│   ├── ci.yaml
+│   ├── deploy.yaml
+│   ├── infra.yaml
+│   └── auto-destroy.yaml
+├── Jenkinsfile                 # Full pipeline: test → build → push → terraform → deploy
+├── jenkins/
+│   ├── Dockerfile              # Jenkins image with Docker, kubectl, kustomize, terraform, AWS CLI
+│   ├── plugins.txt             # Required Jenkins plugins
+│   └── docker-compose.yaml     # Local development only
 ├── config/
-│   └── constants.yaml      # Central configuration — all tuneable values in one place
+│   └── constants.yaml          # Central configuration — all tuneable values in one place
 ├── terraform/
 │   ├── modules/
-│   │   ├── vpc/            # VPC, subnets, NAT gateways, route tables
-│   │   ├── eks/            # EKS cluster, managed node group, OIDC provider
-│   │   ├── ecr/            # Container registries with lifecycle policies
-│   │   └── iam/            # Cluster, node, and GitHub Actions deployer roles
+│   │   ├── vpc/                # VPC, subnets, NAT gateways, route tables
+│   │   ├── eks/                # EKS cluster, managed node group, OIDC provider
+│   │   ├── ecr/                # Container registries with lifecycle policies
+│   │   ├── iam/                # Cluster, node, and GitHub Actions deployer roles
+│   │   └── jenkins/            # Jenkins EC2, ALB, IAM role, EBS volume
 │   └── environments/
-│       ├── beta/           # t3.medium, 1–3 nodes, single NAT
-│       ├── gamma/          # t3.large, 2–5 nodes, single NAT
-│       └── prod/           # t3.xlarge, 3–10 nodes, HA NAT (3 gateways)
+│       ├── beta/               # t3.medium, 1–3 nodes, single NAT
+│       ├── gamma/              # t3.large, 2–5 nodes, single NAT
+│       └── prod/               # t3.xlarge, 3–10 nodes, HA NAT (3 gateways)
 ├── kubernetes/
-│   ├── base/               # Deployment, Service, Ingress, HPA, ConfigMap
+│   ├── base/                   # Deployment, Service, Ingress, HPA, ConfigMap
 │   └── overlays/
-│       ├── beta/           # 1 replica, debug logging, minimal resources
-│       ├── gamma/          # 2 replicas, info logging
-│       └── prod/           # 3 replicas, warn logging, 1 CPU / 1Gi limits
+│       ├── beta/               # 1 replica, debug logging, minimal resources
+│       ├── gamma/              # 2 replicas, info logging
+│       └── prod/               # 3 replicas, warn logging, 1 CPU / 1Gi limits
 ├── templates/
-│   └── new-service/        # Starter template for onboarding new services
+│   └── new-service/            # Starter template for onboarding new services
 └── docs/
-    ├── architecture.md     # Detailed architecture reference
-    └── onboarding.md       # Step-by-step new service guide
+    ├── architecture.md         # Detailed architecture reference
+    └── onboarding.md           # Step-by-step new service guide
 ```
 
 ## Prerequisites
@@ -79,36 +103,37 @@ terraform plan -var-file=terraform.tfvars
 terraform apply -var-file=terraform.tfvars
 ```
 
-This creates the VPC (3 public + 3 private subnets), EKS cluster, ECR repositories for the default services (`api`, `web`, `worker`), and all IAM roles.
+This creates the VPC, EKS cluster, ECR repositories, IAM roles, and the Jenkins EC2 instance with ALB.
 
-### 2. Deploy a Service
+### 2. Configure Jenkins
+
+After `terraform apply` completes:
 
 ```bash
-# Configure kubectl
-aws eks update-kubeconfig --name platform-core-beta --region us-west-2
-
-# Build and push
-IMAGE=<account>.dkr.ecr.us-west-2.amazonaws.com/beta/api:<tag>
-docker build -t $IMAGE .
-docker push $IMAGE
-
-# Deploy to beta
-cd kubernetes/overlays/beta
-kustomize edit set image IMAGE_PLACEHOLDER=$IMAGE
-kubectl apply -k .
+# Get the Jenkins URL
+terraform output jenkins_url
 ```
 
-### 3. Add a New Service
+1. Open the URL in your browser
+2. Go to Manage Jenkins → Credentials → Add `aws-credentials` (AWS Credentials type)
+3. Create a Pipeline job pointing to this repo's `Jenkinsfile`
+4. Update the `JENKINS_URL` GitHub secret with the ALB URL
+
+### 3. Trigger a Pipeline
+
+Push to `main` — GitHub Actions will automatically trigger the Jenkins CI job. For deploy and infra, use the Actions tab → workflow dispatch.
+
+### 4. Add a New Service
 
 ```bash
 # Copy the template
 cp -r templates/new-service/ ~/repos/my-service/
 
-# Replace placeholders in all YAML files
+# Replace placeholders
 find ~/repos/my-service -type f -name '*.yaml' | xargs sed -i 's/{{SERVICE_NAME}}/my-service/g'
-find ~/repos/my-service -type f -name '*.yaml' | xargs sed -i 's|{{IMAGE}}|<account>.dkr.ecr.us-west-2.amazonaws.com/my-service:latest|g'
+find ~/repos/my-service -type f -name '*.yaml' | xargs sed -i 's|{{IMAGE}}|230296653961.dkr.ecr.us-west-2.amazonaws.com/my-service:latest|g'
 
-# Add the service name to terraform.tfvars in each environment
+# Add the service to terraform.tfvars in each environment
 # services = ["api", "web", "worker", "my-service"]
 ```
 
@@ -121,9 +146,10 @@ See [docs/onboarding.md](docs/onboarding.md) for the full walkthrough.
 | Module | Resources | Key Config |
 |--------|-----------|------------|
 | **vpc** | VPC, 3 public + 3 private subnets, IGW, NAT gateway(s), route tables | `enable_ha_nat` for prod (3 NATs across AZs) |
-| **eks** | EKS cluster (v1.29), managed node group, OIDC provider for IRSA | Instance types and scaling per environment |
+| **eks** | EKS cluster (v1.30), managed node group, OIDC provider for IRSA | Instance types and scaling per environment |
 | **ecr** | Per-service repositories, immutable tags, scan-on-push | Lifecycle: expire untagged after 7 days, keep last 20 tagged |
 | **iam** | EKS cluster role, node role, GitHub Actions OIDC deployer role | Passwordless CI/CD via OIDC federation |
+| **jenkins** | EC2 instance, ALB, EBS volume, IAM role | Jenkins on Amazon Linux 2023, 50GB persistent home |
 
 ### Environment Sizing
 
@@ -151,30 +177,35 @@ Environment overlays patch replica counts, HPA ranges, resource limits, and log 
 
 ## CI/CD Workflows
 
-### ci.yaml — Build Pipeline (Reusable)
+GitHub Actions acts as a thin trigger layer — on push/PR it calls Jenkins via API. Jenkins owns the full pipeline.
 
-Triggered on push to `main`, PRs, or via `workflow_call` from service repos.
+### GitHub Actions (trigger layer)
 
-```yaml
-# Service repos call it like this:
-jobs:
-  ci:
-    uses: your-org/platform-core/.github/workflows/ci.yaml@main
-    with:
-      service_name: my-service
-      dockerfile_path: ./Dockerfile
-    secrets: inherit
-```
+The workflows in `.github/workflows/` only trigger Jenkins jobs via the Jenkins API. They require three GitHub secrets: `JENKINS_URL`, `JENKINS_USER`, `JENKINS_API_TOKEN`.
 
-Pipeline: **test → build → push to ECR** (push step only runs on `main` branch merges). Uses GitHub OIDC for AWS authentication — no static credentials.
+- `ci.yaml` — triggers on push to `main` and PRs, calls Jenkins CI job
+- `deploy.yaml` — manual dispatch, triggers Jenkins deploy job for selected environment
+- `infra.yaml` — triggers on `terraform/**` changes or manual dispatch, calls Jenkins infra job
+- `auto-destroy.yaml` — scheduled every 40 minutes, destroys beta to save costs
 
-### deploy.yaml — Deploy to Environment
+For teams that want to skip Jenkins and run GitHub Actions directly, use the workflows in `github-actions-standalone/`.
 
-Manual trigger (`workflow_dispatch`). Select the environment, service name, and image tag. Uses Kustomize to set the image and `kubectl apply` to deploy. Environment protection rules enforce approval gates for gamma and prod.
+### Jenkins (CI/CD orchestrator on EC2)
 
-### infra.yaml — Infrastructure Changes
+Jenkins is provisioned on EC2 via `terraform/modules/jenkins`. After `terraform apply`, grab the `jenkins_url` output and update the `JENKINS_URL` GitHub secret.
 
-Triggered on push to `terraform/**` or manual dispatch. Runs `terraform plan`, uploads the plan as an artifact, then `terraform apply` in a separate job gated by environment protection rules.
+Pipeline stages (`Jenkinsfile`):
+- `Test` — run test suite
+- `Build` — docker build
+- `Push` — push to ECR (main branch only)
+- `Terraform Plan` — always runs, archives the plan artifact
+- `Terraform Apply` — gated by `INFRA_APPLY` param + manual approval for gamma/prod
+- `Deploy` — gated by `DEPLOY` param + manual approval for gamma/prod
+
+Setup after provisioning:
+1. Open the `jenkins_url` output in your browser
+2. Go to Manage Jenkins → Credentials → Add `aws-credentials` (type: AWS Credentials)
+3. Create a Pipeline job pointing to this repo's `Jenkinsfile`
 
 ## New Service Template
 

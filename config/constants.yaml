@@ -86,8 +86,13 @@ environments:
     log_level: warn
     ha_nat: true
 
+# --- Jenkins (runs on EC2, provisioned via terraform/modules/jenkins) ---
+jenkins:
+  instance_type: t3.medium
+  version: "2.452.3"
+  # URL is output after terraform apply — update JENKINS_URL GitHub secret
+  url: ""  # e.g. http://platform-core-jenkins-alb-xxxx.us-west-2.elb.amazonaws.com
 # --- GitHub Actions ---
-github:
   default_branch: main
   runner: ubuntu-latest
   actions_versions:

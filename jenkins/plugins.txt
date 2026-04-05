@@ -1,0 +1,9 @@
+workflow-aggregator
+git
+pipeline-aws
+amazon-ecr
+credentials-binding
+pipeline-stage-view
+blueocean
+docker-workflow
+kubernetes-cli

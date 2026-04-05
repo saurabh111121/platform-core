@@ -1,0 +1,46 @@
+name: Auto Destroy Beta
+
+on:
+  # Triggers 40 minutes after the Infrastructure workflow completes on beta
+  workflow_run:
+    workflows: ["Infrastructure — Trigger Jenkins"]
+    types: [completed]
+  # Manual trigger as fallback
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-west-2
+
+jobs:
+  wait-and-destroy:
+    runs-on: ubuntu-latest
+    # Only run if the triggering workflow was for beta (or manual)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      github.event.workflow_run.conclusion == 'success'
+    environment: beta
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Wait 40 minutes
+        run: sleep 2400
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        run: terraform init
+        working-directory: terraform/environments/beta
+
+      - name: Terraform Destroy
+        run: terraform destroy -var-file=terraform.tfvars -auto-approve
+        working-directory: terraform/environments/beta
