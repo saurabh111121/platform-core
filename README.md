@@ -51,8 +51,6 @@ platform-core/
 │       ├── beta/           # 1 replica, debug logging, minimal resources
 │       ├── gamma/          # 2 replicas, info logging
 │       └── prod/           # 3 replicas, warn logging, 1 CPU / 1Gi limits
-├── ci-cd/
-│   └── .github/workflows/  # Reference copies of workflow sources
 ├── templates/
 │   └── new-service/        # Starter template for onboarding new services
 └── docs/

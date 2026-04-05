@@ -10,9 +10,6 @@ on:
         required: false
         type: string
         default: Dockerfile
-  push:
-    branches: [main]
-  pull_request:
 
 permissions:
   id-token: write
