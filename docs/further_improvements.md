@@ -2,32 +2,34 @@
 
 This document tracks what is needed to evolve this platform into a complete DevSecOps and SRE-grade pipeline.
 
+Items marked ✅ are already implemented (opt-in via feature flags). Items marked 🔲 are pending.
+
 ---
 
 ## 1. Security (DevSecOps)
 
 ### Pipeline Scanning
-| Tool | Purpose |
-|------|---------|
-| Trivy / Snyk | Scan Docker images for CVEs before pushing to ECR |
-| Checkov / tfsec | Scan Terraform configs for misconfigurations before apply |
-| Semgrep / SonarQube | SAST — static code analysis on every PR |
-| OWASP Dependency Check | Scan for vulnerable packages in application dependencies |
-| GitLeaks / truffleHog | Prevent secrets from being committed — pre-commit hook + pipeline step |
+| Tool | Purpose | Status |
+|------|---------|--------|
+| Trivy | Scan Docker images for CVEs before pushing to ECR | ✅ `ENABLE_TRIVY=true` in Jenkins |
+| Checkov | Scan Terraform configs for misconfigurations before apply | ✅ `ENABLE_CHECKOV=true` in Jenkins |
+| Semgrep / SonarQube | SAST — static code analysis on every PR | ✅ `ENABLE_SEMGREP=true` in Jenkins |
+| GitLeaks / truffleHog | Prevent secrets from being committed | ✅ `ENABLE_GITLEAKS=true` in Jenkins |
+| OWASP Dependency Check | Scan for vulnerable packages in application dependencies | 🔲 |
 
 ### Runtime Security
-| Tool | Purpose |
-|------|---------|
-| Falco | DaemonSet on EKS for real-time runtime threat detection |
-| AWS GuardDuty | Cloud-level threat detection across EC2, EKS, S3, IAM |
-| AWS Security Hub | Centralize findings from GuardDuty, Inspector, and Macie |
+| Tool | Purpose | Status |
+|------|---------|--------|
+| Falco | DaemonSet on EKS for real-time runtime threat detection | 🔲 |
+| AWS GuardDuty | Cloud-level threat detection across EC2, EKS, S3, IAM | 🔲 |
+| AWS Security Hub | Centralize findings from GuardDuty, Inspector, and Macie | 🔲 |
 
 ### Compliance & Governance
-| Tool | Purpose |
-|------|---------|
-| AWS CloudTrail | Full audit logging of all API calls across the account |
-| OPA / Gatekeeper | Kubernetes admission policies (block privileged containers, require resource limits) |
-| AWS Config | Track configuration changes and enforce compliance rules |
+| Tool | Purpose | Status |
+|------|---------|--------|
+| AWS CloudTrail | Full audit logging of all API calls across the account | 🔲 |
+| OPA / Gatekeeper | Kubernetes admission policies | 🔲 |
+| AWS Config | Track configuration changes and enforce compliance rules | 🔲 |
 
 ---
 
@@ -56,10 +58,13 @@ This document tracks what is needed to evolve this platform into a complete DevS
 
 ## 3. Observability
 
-- Logging — Fluent Bit DaemonSet on EKS shipping pod logs to CloudWatch Log Groups
-- Metrics — Prometheus + Grafana or CloudWatch Container Insights for cluster and app metrics
-- Alerting — CloudWatch Alarms or Alertmanager firing on deployment failures, pod crashes, and high resource usage
-- Distributed tracing — AWS X-Ray or OpenTelemetry for request tracing across services
+| Tool | Purpose | Status |
+|------|---------|--------|
+| CloudWatch log groups + Container Insights | EKS pod logs and cluster metrics | ✅ `features.observability.cloudwatch = true` |
+| Prometheus + Grafana | Cluster and app metrics, dashboards | ✅ `features.observability.prometheus = true` |
+| Fluent Bit DaemonSet | Ship pod logs to CloudWatch | 🔲 |
+| Alertmanager | Fire alerts on failures and high resource usage | 🔲 included with Prometheus stack |
+| AWS X-Ray / OpenTelemetry | Distributed tracing across services | 🔲 |
 
 ---
 
@@ -74,10 +79,12 @@ This document tracks what is needed to evolve this platform into a complete DevS
 
 ## 5. Developer Experience
 
-- Pre-commit hooks — `terraform fmt`, `terraform validate`, and YAML linting via pre-commit framework
-- Helm — consider replacing Kustomize with Helm for more widely adopted packaging and easier parameterization
-- GitOps (ArgoCD / Flux) — replace Jenkins push-based deploys with pull-based GitOps; cluster reconciles itself from Git with drift detection and self-healing
-- Service catalog — standardize new service onboarding with a self-service portal or CLI tool built on top of `templates/new-service/`
+| Item | Status |
+|------|--------|
+| Pre-commit hooks (`terraform fmt`, `terraform validate`, YAML linting) | 🔲 |
+| Helm — replace Kustomize with Helm for wider adoption | 🔲 |
+| ArgoCD / Flux GitOps — pull-based delivery with drift detection | ✅ `features.gitops.argocd = true` |
+| Service catalog — self-service onboarding portal (Backstage) | 🔲 |
 
 ---
 

@@ -17,7 +17,8 @@ An infrastructure-as-code platform for deploying containerized services on AWS E
                              │ Jenkins API call
   ┌──────────────────────────▼──────────────────────────────────────┐
   │              Jenkins on EC2 (CI/CD orchestrator)                │
-  │   Test → Build → Push to ECR → Terraform Apply → K8s Deploy     │
+  │  GitLeaks · Semgrep · Checkov · Test · Build · Trivy · Push     │
+  │              Terraform Apply → K8s Deploy                       │
   └────────┬──────────────────┬──────────────────────┬──────────────┘
            │                  │                      │
     docker push          terraform apply        kubectl apply
@@ -26,14 +27,21 @@ An infrastructure-as-code platform for deploying containerized services on AWS E
   │     ECR       │  │   AWS Resources   │  │    EKS Cluster        │
   │  (per-svc)    │  │  VPC/IAM/EKS/ECR  │  │  beta·gamma·prod      │
   └───────────────┘  └───────────────────┘  │  (Kustomize overlays) │
+                                            │                       │
+                                            │  ┌─────────────────┐  │
+                                            │  │ opt-in modules  │  │
+                                            │  │ · CloudWatch    │  │
+                                            │  │ · Prometheus    │  │
+                                            │  │ · ArgoCD        │  │
+                                            │  └─────────────────┘  │
                                             └───────────────────────┘
 ```
 
 Four layers work together:
 
 1. GitHub Actions — lightweight trigger layer, fires on push/PR and calls Jenkins via API
-2. Jenkins (EC2) — full CI/CD orchestrator: test, build, push to ECR, terraform apply, kubectl deploy
-3. Terraform — provisions all AWS infrastructure (VPC, EKS, ECR, IAM, Jenkins EC2)
+2. Jenkins (EC2) — full CI/CD orchestrator with opt-in DevSecOps scanning: GitLeaks → Semgrep → Checkov → Test → Build → Trivy → Push → Terraform → Deploy
+3. Terraform — provisions all AWS infrastructure (VPC, EKS, ECR, IAM, Jenkins EC2) plus opt-in modules (CloudWatch, Prometheus, ArgoCD)
 4. Kubernetes + Kustomize — defines app deployments with per-environment overlays (beta/gamma/prod)
 
 ## Directory Structure
@@ -64,7 +72,12 @@ platform-core/
 │   │   ├── eks/                # EKS cluster, managed node group, OIDC provider
 │   │   ├── ecr/                # Container registries with lifecycle policies
 │   │   ├── iam/                # Cluster, node, and GitHub Actions deployer roles
-│   │   └── jenkins/            # Jenkins EC2, ALB, IAM role, EBS volume
+│   │   ├── jenkins/            # Jenkins EC2, ALB, IAM role, EBS volume
+│   │   ├── observability/
+│   │   │   ├── cloudwatch/     # CloudWatch log groups + Container Insights (opt-in)
+│   │   │   └── prometheus/     # Prometheus + Grafana via Helm (opt-in)
+│   │   └── gitops/
+│   │       └── argocd/         # ArgoCD + auto-sync Application via Helm (opt-in)
 │   └── environments/
 │       ├── beta/               # t3.medium, 1–3 nodes, single NAT
 │       ├── gamma/              # t3.large, 2–5 nodes, single NAT
@@ -79,7 +92,8 @@ platform-core/
 │   └── new-service/            # Starter template for onboarding new services
 └── docs/
     ├── architecture.md         # Detailed architecture reference
-    └── onboarding.md           # Step-by-step new service guide
+    ├── onboarding.md           # Step-by-step new service guide
+    └── further_improvements.md # DevSecOps and SRE improvement roadmap
 ```
 
 ## Prerequisites
@@ -150,6 +164,9 @@ See [docs/onboarding.md](docs/onboarding.md) for the full walkthrough.
 | **ecr** | Per-service repositories, immutable tags, scan-on-push | Lifecycle: expire untagged after 7 days, keep last 20 tagged |
 | **iam** | EKS cluster role, node role, GitHub Actions OIDC deployer role | Passwordless CI/CD via OIDC federation |
 | **jenkins** | EC2 instance, ALB, EBS volume, IAM role | Jenkins on Amazon Linux 2023, 50GB persistent home |
+| **observability/cloudwatch** | CloudWatch log groups, EKS Container Insights addon | Opt-in via `features.observability.cloudwatch = true` |
+| **observability/prometheus** | kube-prometheus-stack (Prometheus + Grafana + Alertmanager) | Opt-in via `features.observability.prometheus = true` |
+| **gitops/argocd** | ArgoCD + ArgoCD Application with auto-sync | Opt-in via `features.gitops.argocd = true` |
 
 ### Environment Sizing
 
@@ -226,6 +243,35 @@ Terraform state is stored in S3 with per-environment keys:
 | beta | `beta/terraform.tfstate` |
 | gamma | `gamma/terraform.tfstate` |
 | prod | `prod/terraform.tfstate` |
+
+## Feature Flags
+
+Optional modules are disabled by default. Enable them per environment by adding to `terraform/environments/<env>/terraform.tfvars`:
+
+```hcl
+features = {
+  devsecops = {
+    trivy    = false  # Container image CVE scanning in Jenkins pipeline
+    checkov  = false  # Terraform IaC misconfiguration scanning
+    semgrep  = false  # SAST static code analysis
+    gitleaks = false  # Secrets scanning
+  }
+  observability = {
+    cloudwatch = true   # CloudWatch log groups + Container Insights
+    prometheus = false  # Prometheus + Grafana + Alertmanager via Helm
+  }
+  gitops = {
+    argocd = false  # ArgoCD pull-based GitOps with auto-sync
+  }
+}
+```
+
+DevSecOps scanning stages in the Jenkinsfile are activated via Jenkins environment variables: `ENABLE_TRIVY`, `ENABLE_CHECKOV`, `ENABLE_SEMGREP`, `ENABLE_GITLEAKS`.
+
+Feature branches available for reference:
+- `feature/devsecops` — Jenkinsfile scanning stages
+- `feature/observability` — CloudWatch + Prometheus Terraform modules
+- `feature/gitops` — ArgoCD Terraform module
 
 ## Configuration
 
