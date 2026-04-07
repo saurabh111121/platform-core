@@ -73,7 +73,7 @@ Items marked ✅ are already implemented (opt-in via feature flags). Items marke
 - Terraform state locking — add DynamoDB table as a lock mechanism to prevent concurrent `terraform apply` from corrupting state
 - Gamma and prod provisioning — `terraform init` and first `terraform apply` for gamma and prod has not been run yet
 - Jenkins HA — Jenkins runs on a single EC2 instance; run it as a pod inside EKS or use a multi-AZ setup to avoid CI/CD downtime
-- Multi-region — currently single region (us-west-2); add cross-region replication for prod resilience
+- Multi-region — currently single region (us-east-1); add cross-region replication for prod resilience
 
 ---
 

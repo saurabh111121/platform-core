@@ -11,12 +11,12 @@
 project_name: platform-core
 
 # --- AWS ---
-aws_region: us-west-2
-aws_account_id: "230296653961"
-ecr_registry: "230296653961.dkr.ecr.us-west-2.amazonaws.com"
+aws_region: us-east-1
+aws_account_id: "730667140374"
+ecr_registry: "730667140374.dkr.ecr.us-east-1.amazonaws.com"
 
 # --- IAM / OIDC ---
-deployer_role_arn: "arn:aws:iam::230296653961:role/platform-core-beta-deployer-role"  # per-env: platform-core-{env}-deployer-role
+deployer_role_arn: "arn:aws:iam::730667140374:role/platform-core-beta-deployer-role"  # per-env: platform-core-{env}-deployer-role
 
 # --- EKS Cluster Names ---
 eks_clusters:
@@ -33,8 +33,8 @@ services:
   - worker
 
 # --- Terraform State ---
-terraform_state_bucket: "platform-core-tfstate-230296653961"
-terraform_state_region: us-west-2
+terraform_state_bucket: "platform-core-tfstate-730667140374"
+terraform_state_region: us-east-1
 
 # --- Container Defaults ---
 container:
@@ -91,7 +91,7 @@ jenkins:
   instance_type: t3.medium
   version: "2.452.3"
   # URL is output after terraform apply — update JENKINS_URL GitHub secret
-  url: ""  # e.g. http://platform-core-jenkins-alb-xxxx.us-west-2.elb.amazonaws.com
+  url: ""  # e.g. http://platform-core-jenkins-alb-xxxx.us-east-1.elb.amazonaws.com
 # --- Features (opt-in, all off by default) ---
 # Set to true to enable the corresponding module/tooling
 features:

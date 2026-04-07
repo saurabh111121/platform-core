@@ -1,8 +1,8 @@
 terraform {
   backend "s3" {
-    bucket = "platform-core-tfstate-230296653961"
+    bucket = "platform-core-tfstate-730667140374"
     key    = "beta/terraform.tfstate"
-    region = "us-west-2"
+    region = "us-east-1"
   }
 
   required_providers {
@@ -30,7 +30,7 @@ module "iam" {
 
   environment  = var.environment
   project      = var.project
-  state_bucket = "platform-core-tfstate-230296653961"
+  state_bucket = "platform-core-tfstate-730667140374"
 }
 
 module "eks" {
@@ -63,27 +63,5 @@ module "jenkins" {
   vpc_id            = module.vpc.vpc_id
   public_subnet_id  = module.vpc.public_subnet_ids[0]
   public_subnet_ids = module.vpc.public_subnet_ids
-  state_bucket      = "platform-core-tfstate-230296653961"
-}
-
-# --- Optional feature modules (opt-in via var.features) ---
-
-module "cloudwatch" {
-  count  = var.features.observability.cloudwatch ? 1 : 0
-  source = "../../modules/observability/cloudwatch"
-
-  project     = var.project
-  environment = var.environment
-}
-
-module "prometheus" {
-  count  = var.features.observability.prometheus ? 1 : 0
-  source = "../../modules/observability/prometheus"
-}
-
-module "argocd" {
-  count  = var.features.gitops.argocd ? 1 : 0
-  source = "../../modules/gitops/argocd"
-
-  environment = var.environment
+  state_bucket      = "platform-core-tfstate-730667140374"
 }

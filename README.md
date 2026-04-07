@@ -145,7 +145,7 @@ cp -r templates/new-service/ ~/repos/my-service/
 
 # Replace placeholders
 find ~/repos/my-service -type f -name '*.yaml' | xargs sed -i 's/{{SERVICE_NAME}}/my-service/g'
-find ~/repos/my-service -type f -name '*.yaml' | xargs sed -i 's|{{IMAGE}}|230296653961.dkr.ecr.us-west-2.amazonaws.com/my-service:latest|g'
+find ~/repos/my-service -type f -name '*.yaml' | xargs sed -i 's|{{IMAGE}}|730667140374.dkr.ecr.us-east-1.amazonaws.com/my-service:latest|g'
 
 # Add the service to terraform.tfvars in each environment
 # services = ["api", "web", "worker", "my-service"]

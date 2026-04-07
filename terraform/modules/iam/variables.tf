@@ -18,5 +18,5 @@ variable "github_repo" {
 
 variable "state_bucket" {
   type    = string
-  default = "platform-core-tfstate-230296653961"
+  default = "platform-core-tfstate-730667140374"
 }

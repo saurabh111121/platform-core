@@ -35,9 +35,9 @@ pipeline {
     }
 
     environment {
-        AWS_REGION        = 'us-west-2'
-        ECR_REGISTRY      = '230296653961.dkr.ecr.us-west-2.amazonaws.com'
-        AWS_ACCOUNT_ID    = '230296653961'
+        AWS_REGION        = 'us-east-1'
+        ECR_REGISTRY      = '730667140374.dkr.ecr.us-east-1.amazonaws.com'
+        AWS_ACCOUNT_ID    = '730667140374'
         TF_DIR            = "terraform/environments/${params.ENVIRONMENT}"
         IMAGE_TAG         = "${env.GIT_COMMIT?.take(7) ?: 'latest'}"
         IMAGE             = "${ECR_REGISTRY}/${params.SERVICE_NAME}:${IMAGE_TAG}"
