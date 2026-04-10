@@ -130,7 +130,9 @@ resource "aws_iam_role_policy" "jenkins" {
           "ec2:*InternetGateway*", "ec2:*NatGateway*",
           "ec2:*Address*", "ec2:*SecurityGroup*",
           "ec2:*NetworkInterface*", "ec2:*Tags*",
-          "ec2:DescribeAvailabilityZones", "ec2:DescribeAccountAttributes"
+          "ec2:DescribeAvailabilityZones", "ec2:DescribeAccountAttributes",
+          "ec2:DescribeImages", "ec2:DescribeVolumes", "ec2:DescribeInstances",
+          "ec2:*Volume*", "ec2:*Instance*"
         ]
         Resource = "*"
       },
@@ -142,9 +144,18 @@ resource "aws_iam_role_policy" "jenkins" {
           "iam:PutRolePolicy", "iam:DeleteRolePolicy", "iam:GetRolePolicy",
           "iam:ListAttachedRolePolicies", "iam:ListRolePolicies",
           "iam:TagRole", "iam:UntagRole",
+          "iam:GetInstanceProfile", "iam:CreateInstanceProfile",
+          "iam:DeleteInstanceProfile", "iam:AddRoleToInstanceProfile",
+          "iam:RemoveRoleFromInstanceProfile", "iam:ListInstanceProfilesForRole",
           "iam:GetOpenIDConnectProvider", "iam:CreateOpenIDConnectProvider",
           "iam:DeleteOpenIDConnectProvider", "iam:UpdateOpenIDConnectProviderThumbprint"
         ]
+        Resource = "*"
+      },
+      {
+        Sid    = "ELBAccess"
+        Effect = "Allow"
+        Action = ["elasticloadbalancing:*"]
         Resource = "*"
       }
     ]
