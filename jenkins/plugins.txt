@@ -1,5 +1,6 @@
 workflow-aggregator
 git
+aws-credentials
 pipeline-aws
 amazon-ecr
 credentials-binding
