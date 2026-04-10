@@ -1,12 +1,16 @@
 name: Auto Destroy Beta
 
 on:
-  # Triggers 40 minutes after the Infrastructure workflow completes on beta
-  workflow_run:
-    workflows: ["Infrastructure — Trigger Jenkins"]
-    types: [completed]
-  # Manual trigger as fallback
+  # TEMPORARILY DISABLED — re-enable when ready
+  # workflow_run:
+  #   workflows: ["Infrastructure — Trigger Jenkins"]
+  #   types: [completed]
+  # workflow_dispatch:
   workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type DESTROY to confirm"
+        required: true
 
 permissions:
   id-token: write
@@ -18,10 +22,8 @@ env:
 jobs:
   wait-and-destroy:
     runs-on: ubuntu-latest
-    # Only run if the triggering workflow was for beta (or manual)
     if: >
-      github.event_name == 'workflow_dispatch' ||
-      github.event.workflow_run.conclusion == 'success'
+      github.event.inputs.confirm == 'DESTROY'
     environment: beta
     steps:
       - uses: actions/checkout@v4
