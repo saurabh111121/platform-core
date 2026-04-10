@@ -151,6 +151,11 @@ resource "aws_iam_role_policy" "jenkins" {
   })
 }
 
+resource "aws_iam_role_policy_attachment" "ssm" {
+  role       = aws_iam_role.jenkins.name
+  policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+}
+
 resource "aws_iam_instance_profile" "jenkins" {
   name = "${local.name}-profile"
   role = aws_iam_role.jenkins.name
@@ -176,6 +181,7 @@ resource "aws_instance" "jenkins" {
   user_data = base64encode(templatefile("${path.module}/userdata.sh", {
     jenkins_version = var.jenkins_version
   }))
+  user_data_replace_on_change = true
 
   tags = { Name = local.name, Project = var.project }
 }
