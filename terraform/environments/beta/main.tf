@@ -1,6 +1,6 @@
 terraform {
   backend "s3" {
-    bucket = "platform-core-tfstate-730667140374"
+    bucket = "platform-core-tfstate"
     key    = "beta/terraform.tfstate"
     region = "us-east-1"
   }
@@ -30,7 +30,7 @@ module "iam" {
 
   environment  = var.environment
   project      = var.project
-  state_bucket = "platform-core-tfstate-730667140374"
+  state_bucket = "platform-core-tfstate"
 }
 
 module "eks" {
@@ -63,5 +63,5 @@ module "jenkins" {
   vpc_id            = module.vpc.vpc_id
   public_subnet_id  = module.vpc.public_subnet_ids[0]
   public_subnet_ids = module.vpc.public_subnet_ids
-  state_bucket      = "platform-core-tfstate-730667140374"
+  state_bucket      = "platform-core-tfstate"
 }
