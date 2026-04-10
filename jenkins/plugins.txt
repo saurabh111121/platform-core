@@ -1,6 +1,10 @@
 workflow-aggregator
 git
 aws-credentials
+aws-java-sdk-minimal
+aws-java-sdk-ec2
+aws-java-sdk2-core
+aws-java-sdk2-ec2
 pipeline-aws
 amazon-ecr
 credentials-binding
